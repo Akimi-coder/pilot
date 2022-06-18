@@ -1,4 +1,5 @@
 #include "Plane.h"
+#include <AP_ServoRelayEvents/AP_ServoRelayEvents.h>
 
 /********************************************************************************/
 // Command Event Handlers
@@ -66,6 +67,9 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_LOITER_UNLIM:              // Loiter indefinitely
         do_loiter_unlimited(cmd);
+        break;
+    
+    case MAV_CMD_USER_1:
         break;
 
     case MAV_CMD_NAV_LOITER_TURNS:              // Loiter N Times
@@ -221,6 +225,7 @@ should move onto the next mission element.
 Return true if we do not recognize the command so that we move on to the next command
 *******************************************************************************/
 
+
 bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Returns true if command complete
 {
     switch(cmd.id) {
@@ -235,6 +240,9 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
 
     case MAV_CMD_NAV_WAYPOINT:
         return verify_nav_wp(cmd);
+
+    case MAV_CMD_USER_1:
+        return verify_user_1(cmd);
 
     case MAV_CMD_NAV_LAND:
 #if HAL_QUADPLANE_ENABLED
@@ -330,6 +338,35 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
 /********************************************************************************/
 //  Nav (Must) commands
 /********************************************************************************/
+
+bool Plane::verify_user_1(const AP_Mission::Mission_Command& cmd){
+    AP_Mission::Mission_Command next_cmd = plane.mission.get_current_nav_cmd();
+    AP_Mission::Mission_Command servo_cmd = plane.mission.get_current_do_cmd();
+    AP_ServoRelayEvents *sre = AP::servorelayevents();
+    Location curr_loc = plane.current_loc;
+    int32_t alt = 0;
+    if(curr_loc.get_alt_cm(Location::AltFrame::ABOVE_TERRAIN,alt)){
+
+    }
+    if(alt < 0){
+        alt = 0;
+    }
+    double time = sqrtf(2*(alt/100)/9.81054);
+    int32_t distance_to_curr_wp = curr_loc.get_distance(next_cmd.content.location);
+    
+    float groundspeed = ahrs.groundspeed();
+    int32_t distance = 2 * groundspeed * time - plane.airspeed.get_airspeed() * time;
+    int32_t drop_distance = distance_to_curr_wp - distance;
+    if(drop_distance <= 0){
+        gcs().send_text(MAV_SEVERITY_INFO, "DROP!!!!");
+        sre->do_set_servo(servo_cmd.content.servo.channel,servo_cmd.content.servo.pwm);
+        return true;
+    } 
+    gcs().send_text(MAV_SEVERITY_INFO, "Distance to drop: %ld",drop_distance);
+    return false;
+}
+
+
 
 void Plane::do_RTL(int32_t rtl_altitude_AMSL_cm)
 {

@@ -913,6 +913,8 @@ private:
     void do_takeoff(const AP_Mission::Mission_Command& cmd);
     void do_nav_wp(const AP_Mission::Mission_Command& cmd);
     void do_land(const AP_Mission::Mission_Command& cmd);
+    bool verify_user_1(const AP_Mission::Mission_Command& cmd);
+    void setServo(uint8_t _channel, uint16_t pwm);
 #if HAL_QUADPLANE_ENABLED
     void do_landing_vtol_approach(const AP_Mission::Mission_Command& cmd);
 #endif

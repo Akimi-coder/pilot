@@ -924,6 +924,12 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
     }
     break;
 
+    case MAV_CMD_USER_1:{
+        cmd.content.servo.channel = packet.param1;      // channel
+        cmd.content.servo.pwm = packet.param2;
+        break;
+    }
+
     case MAV_CMD_NAV_LOITER_UNLIM:                      // MAV ID: 17
         cmd.p1 = fabsf(packet.param3);                  // store radius as 16bit since no other params are competing for space
         cmd.content.location.loiter_ccw = (packet.param3 < 0);    // -1 = counter clockwise, +1 = clockwise
@@ -1416,7 +1422,11 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
         packet.param1 = cmd.p1;
 #endif
         break;
-
+    case MAV_CMD_USER_1:{
+        packet.param1 = cmd.content.servo.channel;      // channel
+        packet.param2 = cmd.content.servo.pwm;          // PWM
+        break;
+    }
     case MAV_CMD_NAV_LOITER_UNLIM:                      // MAV ID: 17
         packet.param3 = (float)cmd.p1;
         if (cmd.content.location.loiter_ccw) {
@@ -2348,6 +2358,8 @@ const char *AP_Mission::Mission_Command::type() const
         return "SetHome";
     case MAV_CMD_DO_SET_SERVO:
         return "SetServo";
+    case MAV_CMD_USER_1:
+        return "user";
     case MAV_CMD_DO_SET_RELAY:
         return "SetRelay";
     case MAV_CMD_DO_REPEAT_SERVO:
