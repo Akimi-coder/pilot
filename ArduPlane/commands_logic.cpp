@@ -1,5 +1,6 @@
 #include "Plane.h"
 #include <AP_ServoRelayEvents/AP_ServoRelayEvents.h>
+#include <RC_Channel/RC_Channel.h>
 
 /********************************************************************************/
 // Command Event Handlers
@@ -54,6 +55,12 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
     case MAV_CMD_NAV_WAYPOINT:                  // Navigate to Waypoint
         do_nav_wp(cmd);
         break;
+    
+    case MAV_CMD_USER_1:{
+        AP_Mission::Mission_Command servo_cmd = plane.mission.get_current_do_cmd();
+        gcs().send_text(MAV_SEVERITY_INFO, "Servo: %d pwm: %d",servo_cmd.content.servo.channel,servo_cmd.content.servo.pwm);
+        break;
+    }
 
     case MAV_CMD_NAV_LAND:              // LAND to Waypoint
 #if HAL_QUADPLANE_ENABLED
@@ -67,9 +74,6 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_LOITER_UNLIM:              // Loiter indefinitely
         do_loiter_unlimited(cmd);
-        break;
-    
-    case MAV_CMD_USER_1:
         break;
 
     case MAV_CMD_NAV_LOITER_TURNS:              // Loiter N Times
@@ -201,13 +205,14 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
                                             cmd.content.do_engine_control.cold_start,
                                             cmd.content.do_engine_control.height_delay_cm*0.01f);
         break;
-
+    
 #if AP_SCRIPTING_ENABLED
     case MAV_CMD_NAV_SCRIPT_TIME:
         do_nav_script_time(cmd);
         break;
 #endif
-        
+
+
     default:
         // unable to use the command, allow the vehicle to try the next command
         return false;
@@ -353,16 +358,24 @@ bool Plane::verify_user_1(const AP_Mission::Mission_Command& cmd){
     }
     double time = sqrtf(2*(alt/100)/9.81054);
     int32_t distance_to_curr_wp = curr_loc.get_distance(next_cmd.content.location);
-    
+    uint16_t pwm = hal.rcin->read(abs(servo_cmd.content.desentsys.fuse_channel - 1) % 16);
+    bool fused = pwm > servo_cmd.content.desentsys.pwm_thres;
     float groundspeed = ahrs.groundspeed();
     int32_t distance = 2 * groundspeed * time - plane.airspeed.get_airspeed() * time;
     int32_t drop_distance = distance_to_curr_wp - distance;
     if(drop_distance <= 0){
-        gcs().send_text(MAV_SEVERITY_INFO, "DROP!!!!");
-        sre->do_set_servo(servo_cmd.content.servo.channel,servo_cmd.content.servo.pwm);
+       
+        if(!fused){
+            gcs().send_text(MAV_SEVERITY_INFO, "DROP!!!!");
+            sre->do_set_servo(cmd.content.desentsys.channel, cmd.content.desentsys.pwm);
+        }
+        else{
+            gcs().send_text(MAV_SEVERITY_INFO, "Not dropped (fused position)");
+        }
         return true;
     } 
-    gcs().send_text(MAV_SEVERITY_INFO, "Distance to drop: %ld",drop_distance);
+    
+    gcs().send_text(MAV_SEVERITY_INFO, "Distance to drop: %ld fuse channel:%d %s",drop_distance,servo_cmd.content.desentsys.fuse_channel,fused ? "Fused" : "Armed");
     return false;
 }
 

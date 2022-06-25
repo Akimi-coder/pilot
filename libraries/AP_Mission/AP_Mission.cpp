@@ -925,8 +925,10 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
     break;
 
     case MAV_CMD_USER_1:{
-        cmd.content.servo.channel = packet.param1;      // channel
-        cmd.content.servo.pwm = packet.param2;
+        cmd.content.desentsys.channel = packet.param1;      // channel
+        cmd.content.desentsys.pwm = packet.param2;
+        cmd.content.desentsys.fuse_channel = packet.param3;
+        cmd.content.desentsys.pwm_thres = packet.param4;
         break;
     }
 
@@ -1423,8 +1425,10 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
 #endif
         break;
     case MAV_CMD_USER_1:{
-        packet.param1 = cmd.content.servo.channel;      // channel
-        packet.param2 = cmd.content.servo.pwm;          // PWM
+        packet.param1 = cmd.content.desentsys.channel;      // channel
+        packet.param2 = cmd.content.desentsys.pwm;       // PWM
+        packet.param3 = cmd.content.desentsys.fuse_channel;  
+        packet.param4 = cmd.content.desentsys.pwm_thres;  
         break;
     }
     case MAV_CMD_NAV_LOITER_UNLIM:                      // MAV ID: 17

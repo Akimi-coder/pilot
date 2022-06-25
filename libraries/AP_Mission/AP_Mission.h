@@ -109,7 +109,17 @@ public:
     struct PACKED Set_Servo_Command {
         uint8_t channel;        // servo channel
         uint16_t pwm;           // pwm value for servo
+
     };
+
+    struct PACKED Set_Servo_Prevented
+    {
+        uint8_t channel;        // servo channel
+        uint16_t pwm;
+        uint8_t fuse_channel;
+        uint16_t pwm_thres;
+    };
+    
 
     // repeat servo command structure
     struct PACKED Repeat_Servo_Command {
@@ -250,6 +260,7 @@ public:
     };
 
     union Content {
+        Set_Servo_Prevented desentsys;
         // jump structure
         Jump_Command jump;
 
